@@ -40,20 +40,22 @@ double LaplWell::iF2E(const double u, const double x1, const double x2, const do
 	double dterm3 = 1.-exp(-term3);
 	double dterm4 = 1.-exp(-term4);
 	double sum = 0.;
-	double d, ek;
+	double d, dd, ek;
 	double A;
 	for (int k = 1; k < KMAX; ++k) {
-		sum += iF2Ek(k, u, x1, x2, xd, yd);
+		dd = iF2Ek(k, u, x1, x2, xd, yd);
+		sum += dd;
 		ek = sqrt(u+k*k*PI*PI/xed/xed+alpha*alpha);
 		A = 2*xed/PI/(1-exp(-2*ek*yed));
 		d = A*(exp(-k*term1)/dterm1+exp(-k*term2)/dterm2+exp(-k*term3)/dterm3 + exp(-k*term4)/dterm4);
-		if (k > KMIN && (abs(d/sum) < eps)) {
+		if (isnan(d)) d = 0.;
+		if (k > KMIN && (abs(d) <= TINY || abs(sum) <= TINY || abs(d/sum) < eps)) {
 			return sum;
 		}
 	}
 	double eps = abs(d/sum);
 	ostringstream os;
-	os << "iF2e did not converge in 10000 steps, last eps = " << scientific << eps  << " " << sum<< endl;
+	os << "iF2E did not converge in 10000 steps, last eps = " << scientific << eps  << " sum = " << sum<< endl;
 	throw runtime_error(os.str());
 }
 
@@ -93,13 +95,14 @@ double LaplWell::i1F2H(const double u, const double x1, const double x2, const d
 			dd += i1F2Hk(-k, u, x1, x2, xd, yd, beta2);
 			sum += dd;
 			d = mult*exp(-squ*2*k*xede)/dlm;
-			if (k>kmin && (abs(d/sum) < eps || abs(sum) < TINY)) {
+			if (isnan(d)) d = 0.;
+			if (k>kmin && (d <= TINY || sum <= TINY || abs(d/sum) < eps)) {
 				return 0.5*xede/PI*sum;
 			}
 		}
 		double eps = abs(d/sum);
 		ostringstream os;
-		os << "i1F2H did not converge in 10000 steps, last eps = " << scientific << eps  << " " << sum<< endl;
+		os << "i1F2H did not converge in 10000 steps, last eps = " << scientific << eps  << " sum = " << sum<< endl;
 		throw runtime_error(os.str());
 }
 
@@ -142,6 +145,7 @@ void LaplWell::MakeMatrix(const double u, const double yd) {
 		source_matrix(2*nseg, i+1) = 1.;
 	}
 	// double iF1(const double u, const double x1, const double x2, const double yd) const
+	{ //LOG_DURATION("iF1");
 	for (int i = 0; i < 2*nseg; ++i) {
 		for (int j = 0; j < 2*nseg; ++j) {
 			double x1 = -1. + j*dx;
@@ -149,7 +153,9 @@ void LaplWell::MakeMatrix(const double u, const double yd) {
 			source_matrix(i, j+1) = mult*iF1(u, x1, x2, yd);
 		}
 	}
+	}
 	// double iF2E(const double u, const double x1, const double x2, const double xd, const double yd) const
+	{//LOG_DURATION("iF2E");
 	for (int i = 0; i < 2*nseg; ++i) {
 		double xd = xwd-1. + (i + 0.5)*dx;
 		for (int j = 0; j < 2*nseg; ++j) {
@@ -158,7 +164,9 @@ void LaplWell::MakeMatrix(const double u, const double yd) {
 			source_matrix(i, j+1) += mult*iF2E(u, x1, x2, xd, yd);
 		}
 	}
+	}
 	// double i1F2H(const double u, const double x1, const double x2, const double xd, const double yd) const
+	{//LOG_DURATION("i1F2H");
 	for (int i = 0; i < 2*nseg; ++i) {
 		double xd = xwd-1. + (i + 0.5)*dx;
 		for (int j = 0; j < 2*nseg; ++j) {
@@ -167,14 +175,16 @@ void LaplWell::MakeMatrix(const double u, const double yd) {
 			source_matrix(i, j+1) += mult*i1F2H(u, x1, x2, xd, yd);
 		}
 	}
+	}
 	// double i2F2H(const double u, const double x1, const double x2,  const double yd) const
+	{//LOG_DURATION("i2F2H");
 	for (int i = 0; i < 2*nseg; ++i) {
-		double xd = xwd-1. + (i + 0.5)*dx;
 		for (int j = 0; j < 2*nseg; ++j) {
 			double x1 = -1. + j*dx;
 			double x2 = x1 + dx;
 			source_matrix(i, j+1) += mult*i2F2H(u, x1, x2, yd);
 		}
+	}
 	}
 }
 

@@ -6,6 +6,9 @@
  */
 
 #include "real_well.h"
+#include "profile.h"
+
+using namespace std;
 
 std::vector<double> CalcStehf(const int n) { //OK
 	std::vector<double> v(n+1);
@@ -55,7 +58,9 @@ double RealWell::pwd(const double td) {
 	double ans = 0.;
 	for (int i = 1; i <=NCOEF; ++i) {
 		double s = i*s_mult;
+		{
 		ans += lwell.pwd(s)*s*stehf_coefs[i]/i;
+		}
 	}
 	return ans;
 };

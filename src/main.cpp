@@ -7,6 +7,7 @@
 //============================================================================
 
 #include <iostream>
+#include <iomanip>
 #include "lapl_well.h"
 #include "profile.h"
 #include "real_well.h"
@@ -22,9 +23,10 @@ int main() {
 	double ywd = 0.5*yed;
 	double Fcd = 10.;
 	RealWell well(xwd, xed, ywd, yed, Fcd);
-	vector<double> tds = LogSpaced(0.1, 10., 10);
+	vector<double> tds = LogSpaced(0.0001, 1000., 60);
 	for (auto td: tds) {
-		cout <<"td = " << td << " pd = " << well.pwd(td) << endl;
+		cout << td << "," << well.pwd(td) << endl;
+		//break;
 	}
 
 }
