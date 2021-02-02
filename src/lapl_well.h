@@ -29,6 +29,7 @@ static const int KMIN = 10;
 class LaplWell {
 public:
 	LaplWell(const double xwd_, const double xed_, const double ywd_, const double yed_, const double Fcd_, const double alpha_ = 0.);
+	void PrintSourceMatrix() const;
 	double pd(const double u, const double xd, const double yd);
 	double pwd(const double u);
 	double qwd(const double u);
@@ -50,4 +51,5 @@ private:
 	Eigen::VectorXd rhs;
 	void MakeMatrix(const double u, const double yd);
 	void MakeRhs(const double u);
+	Eigen::MatrixXd MakeSrcMatrix() const;
 };

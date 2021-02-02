@@ -137,6 +137,39 @@ double LaplWell::SEXP(const double y, const double e) const {
 	return b/(1.-b);
 }
 
+Eigen::MatrixXd LaplWell::MakeSrcMatrix() const {
+	Eigen::MatrixXd ans(2*NSEG, 2*NSEG);
+	for (int i = 0; i < 2*NSEG; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			ans(i,j) = 0.;
+		}
+	}
+	double dx = 1./NSEG;
+	double dx2_8 = 0.125*dx*dx;
+	double dx2_2 = 0.5*dx*dx;
+	double coef = PI/Fcd;
+	for (int j = 0; j < NSEG; ++j) {
+		ans(j+NSEG,j+NSEG) = coef*dx2_8;
+		ans(NSEG-j-1, NSEG-j-1) = ans(j+NSEG,j+NSEG);
+		double xj = dx*(j+0.5);
+		for (int i = 0; i < j; ++i) {
+			ans(j+NSEG,i+NSEG) = coef*(dx2_2 + dx*(xj - (i+1)*dx));
+			ans(NSEG-j-1, NSEG-i-1) = ans(j+NSEG,i+NSEG);
+		}
+	}
+	return ans;
+}
+
+void LaplWell::PrintSourceMatrix() const {
+	auto ans = MakeSrcMatrix();
+	for (int i = 0; i < 2*NSEG; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			cout << fixed << setprecision(7) << ans(i, j) << ' ';
+		}
+		cout << endl;
+	}
+}
+
 void LaplWell::MakeMatrix(const double u, const double yd) {
 	double dx = 1./nseg;
 	double mult = -1.*PI/xed;
@@ -144,13 +177,19 @@ void LaplWell::MakeMatrix(const double u, const double yd) {
 		source_matrix(i,0) = 1.;
 		source_matrix(2*nseg, i+1) = 1.;
 	}
+	auto src_m = MakeSrcMatrix();
+	for (int i = 0; i< 2*NSEG; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			source_matrix(i, j+1) = src_m(i,j);
+		}
+	}
 	// double iF1(const double u, const double x1, const double x2, const double yd) const
 	{ //LOG_DURATION("iF1");
 	for (int i = 0; i < 2*nseg; ++i) {
 		for (int j = 0; j < 2*nseg; ++j) {
 			double x1 = -1. + j*dx;
 			double x2 = x1 + dx;
-			source_matrix(i, j+1) = mult*iF1(u, x1, x2, yd);
+			source_matrix(i, j+1) += mult*iF1(u, x1, x2, yd);
 		}
 	}
 	}
@@ -161,7 +200,7 @@ void LaplWell::MakeMatrix(const double u, const double yd) {
 		for (int j = 0; j < 2*nseg; ++j) {
 			double x1 = -1. + j*dx;
 			double x2 = x1 + dx;
-			source_matrix(i, j+1) += mult*iF2E(u, x1, x2, xd, yd);
+			source_matrix(i, j+1) += 1.*mult*iF2E(u, x1, x2, xd, yd); //?
 		}
 	}
 	}

@@ -14,19 +14,11 @@
 #include "auxillary.h"
 #include <cmath>
 #include <utility>
+#include "tests.h"
 using namespace std;
 
 int main() {
-	double xed = 10;
-	double xwd = 0.5*xed;
-	double yed = 10;
-	double ywd = 0.5*yed;
-	double Fcd = 10.;
-	RealWell well(xwd, xed, ywd, yed, Fcd);
-	vector<double> tds = LogSpaced(0.0001, 1000., 60);
-	for (auto td: tds) {
-		cout << td << "," << well.pwd(td) << endl;
-		//break;
-	}
-
+	//SimpleTest(); OK
+	// TestGringarten();
+	// TestCinco(); OK
 }

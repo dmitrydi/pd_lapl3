@@ -53,6 +53,7 @@ RealWell::RealWell(const double xwd, const double xed, const double ywd, const d
 		stehf_coefs(CalcStehf(NCOEF)),
 		lwell(LaplWell(xwd,xed,ywd,yed,Fcd, alpha)){
 };
+
 double RealWell::pwd(const double td) {
 	double s_mult = std::log(2.)/td;
 	double ans = 0.;
@@ -64,3 +65,7 @@ double RealWell::pwd(const double td) {
 	}
 	return ans;
 };
+
+void RealWell::PrintSourceMatrix() const {
+	lwell.PrintSourceMatrix();
+}
