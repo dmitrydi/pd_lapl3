@@ -46,3 +46,5 @@ void SimpleTest();
 void TestGringarten();
 
 void TestCinco();
+
+void TestNew_i12fh();

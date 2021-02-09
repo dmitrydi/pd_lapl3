@@ -11,8 +11,11 @@ using namespace std;
 using namespace FastBessel;
 
 LaplWell::LaplWell(const double xwd_, const double xed_, const double ywd_, const double yed_, const double Fcd_, const double alpha_):
-		xwd(xwd_), xed(xed_), xede(xed_), ywd(ywd_), yed(yed_), Fcd(Fcd_), alpha(alpha_), source_matrix(2*NSEG+1, 2*NSEG+1),
-		rhs(2*NSEG+1), _src_matrix(2*NSEG, 2*NSEG) {
+		xwd(xwd_), xed(xed_), xede(xed_), ywd(ywd_), yed(yed_), Fcd(Fcd_), alpha(alpha_),dx(1./NSEG), bess(false),
+		source_matrix(2*NSEG+1, 2*NSEG+1),
+		rhs(2*NSEG+1), _src_matrix(2*NSEG, 2*NSEG),
+		if1_matrix(2*NSEG, 2*NSEG), if2e_matrix(2*NSEG, 2*NSEG), i1f2h_matrix(2*NSEG, 2*NSEG),
+		i2f2h_matrix(2*NSEG,2*NSEG),  i1f2h_buf(2*NSEG){
 	_src_matrix = MakeSrcMatrix();
 };
 
@@ -70,7 +73,7 @@ double LaplWell::iF2Ek(const int k, const double u, const double x1, const doubl
 	double ydPywd = yd + ywd;
 	double res;
 	res = 2./kpiOxed/ek_;
-	res *= std::cos(kpiOxed*xd);
+	//res *= std::cos(kpiOxed*xd);
 	res *= std::sin(0.5*kpiOxed*(x2 - x1));
 	res *= std::cos(0.5*kpiOxed*(2.*xwd + x1 + x2));
 	res *= (std::exp(-ek_*(2.*yed - ydPywd)) + std::exp(-ek_*ydPywd) + std::exp(-ek_*(2.*yed-aydywd)))*(1 + sexp_)
@@ -100,12 +103,80 @@ double LaplWell::i1F2H(const double u, const double x1, const double x2, const d
 			if (isnan(d)) d = 0.;
 			if (k>kmin && (d <= TINY || sum <= TINY || abs(d/sum) < eps)) {
 				return 0.5*xede/PI*sum;
+
 			}
 		}
 		double eps = abs(d/sum);
 		ostringstream os;
 		os << "i1F2H did not converge in 10000 steps, last eps = " << scientific << eps  << " sum = " << sum<< endl;
 		throw runtime_error(os.str());
+}
+
+Eigen::MatrixXd LaplWell::show_i1f2h_matrix(const double u) {
+	fill_i1f2h(u);
+	Eigen::MatrixXd ans(2*NSEG, 2*NSEG);
+	double mult = -1.*PI/xed;
+	for (int i =0; i < 2*NSEG; ++i)
+		for (int j=0; j<2*NSEG; ++j)
+			ans(i,j) = mult*i1f2h_matrix(i,j);
+	return ans;
+}
+
+void LaplWell::fill_i1f2h(const double u) {
+	i1f2h_matrix = Eigen::MatrixXd::Zero(2*NSEG, 2*NSEG);
+	const double squ = sqrt(u+alpha*alpha);
+	int kmin = static_cast<int>(abs(0.5*(2./squ/xede-(-1.+(2*NSEG-1)*dx)/xed+(xwd-1+0.5*dx)/xed+xwd/xed)));
+	double d, dmult;
+	dmult = 8.*dx*exp(squ*xede/xed*abs((xwd-1+0.5*dx) + xwd - (-1.+(2*NSEG-1)*dx)))/1.-exp(-squ*2.*xede);
+	for (int k = 0; k <= KMAX; ++k) {
+		for (int i: {0, 2*NSEG-1}) {
+			for (double beta: {-1., 1.}) {
+				vect_i1f2h(u, i, k, beta);
+				for (int j = 0; j < 2*NSEG; ++j) {
+					i1f2h_matrix(i, j) += i1f2h_buf(j);
+				}
+				if (k>0) {
+					vect_i1f2h(u, i, -k, beta);
+					for (int j = 0; j < 2*NSEG; ++j) {
+						i1f2h_matrix(i, j) += i1f2h_buf(j);
+					}
+				}
+			}
+		}
+		d = dmult*exp(-squ*2*k*xede);
+		if (isnan(d)) d = 0.;
+		if (k>kmin && (d <= TINY || i1f2h_matrix(0,2*NSEG-1) <= TINY || abs(d/i1f2h_matrix(0,2*NSEG-1)) < eps)) break;
+	}
+	for (int i = 1; i < 2*NSEG - 1; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			if (j >= i) {
+				i1f2h_matrix(i,j) = i1f2h_matrix(0, j-i);
+			}
+			else {
+				i1f2h_matrix(i,j) = i1f2h_matrix(2*NSEG-1, 2*NSEG-1-i+j);
+			}
+		}
+	}
+}
+
+void LaplWell::vect_i1f2h(const double u, const int i, const int k, const double beta) {
+	const double squ = sqrt(u+alpha*alpha);
+	double mult = xed/xede/squ*0.5*xede/PI;
+	double t1, t2, x1, x2, elem;
+	for (int j = 0; j < 2*NSEG; ++j) {
+		x1 = -1.+j*dx;
+		x2 = x1 + dx;
+		t1 = squ*xede*((xwd-1.+(i+0.5)*dx)/xed+beta*xwd/xed-x2/xed-2.*k);
+		t2 = squ*xede*((xwd-1.+(i+0.5)*dx)/xed+beta*xwd/xed-x1/xed-2.*k);
+		if (t1 >= 0) {
+			elem = mult*bess.ik0ab(t1, t2);
+		} else if (t2 <=0.) {
+			elem = mult*bess.ik0ab(abs(t2), abs(t1));
+		} else {
+			elem = mult*(bess.ik00x(abs(t1))+bess.ik00x(abs(t2)));
+		}
+		i1f2h_buf(j) = elem;
+	}
 }
 
 double LaplWell::i1F2Hk(const int k, const double u, const double x1, const double x2, const double xd, const double yd, const double beta) const {
@@ -121,7 +192,7 @@ double LaplWell::i1F2Hk(const int k, const double u, const double x1, const doub
 		} else if (t2 <= 0.) {
 			return mult*bess.ik0ab(squ*abs(t2), squ*abs(t1));
 		} else {
-			return mult*(bess.ik0ab(0., squ*abs(t1))+bess.ik0ab(0., squ*abs(t2)));
+			return mult*(bess.ik00x(squ*abs(t1))+bess.ik00x(squ*abs(t2)));
 		}
 	} else {
 		throw logic_error("i1F2Hk for yd != ywd not implemented");
@@ -171,6 +242,38 @@ void LaplWell::PrintSourceMatrix() const {
 		cout << endl;
 	}
 }
+
+Eigen::MatrixXd LaplWell::make_i1f2h(const double u) {
+	double dx = 1./nseg;
+	double mult = -1.*PI/xed;
+	Eigen::MatrixXd ans(2*NSEG, 2*NSEG);
+	ans = Eigen::MatrixXd::Zero(2*NSEG, 2*NSEG);
+	for (int i = 0; i < 2*NSEG; ++i) {
+		double xd = xwd-1. + (i + 0.5)*dx;
+		for (int j = 0; j < 2*NSEG; ++j) {
+			double x1 = -1. + j*dx;
+			double x2 = x1 + dx;
+			ans(i, j) += mult*i1F2H(u, x1, x2, xd, ywd);
+		}
+	}
+	return ans;
+}
+
+Eigen::MatrixXd LaplWell::make_if2e(const double u){
+	double dx = 1./nseg;
+	double mult = -1.*PI/xed;
+	Eigen::MatrixXd ans(2*NSEG, 2*NSEG);
+	ans = Eigen::MatrixXd::Zero(2*NSEG, 2*NSEG);
+	for (int i = 0; i < 2*NSEG; ++i) {
+		double xd = xwd-1. + (i + 0.5)*dx;
+		for (int j = 0; j < 2*NSEG; ++j) {
+			double x1 = -1. + j*dx;
+			double x2 = x1 + dx;
+			ans(i, j) += mult*iF2E(u, x1, x2, xd, ywd);
+		}
+	}
+	return ans;
+};
 
 void LaplWell::MakeMatrix(const double u, const double yd) {
 	double dx = 1./nseg;

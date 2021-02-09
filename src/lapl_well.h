@@ -15,7 +15,7 @@
 #include <sstream>
 #include <iomanip>
 #include "chbessel.h"
-#include "bessel.h"
+//#include "bessel.h"
 #include "profile.h"
 
 static const int NSEG = 20;
@@ -33,12 +33,16 @@ public:
 	double pd(const double u, const double xd, const double yd);
 	double pwd(const double u);
 	double qwd(const double u);
+	Eigen::MatrixXd make_i1f2h(const double u);
+	Eigen::MatrixXd make_if2e(const double u);
+	Eigen::MatrixXd show_i1f2h_matrix(const double u);
 
 private:
 	const double PI = 3.141592653589793;
 	const int nseg = NSEG;
 	const double eps = SUM_EPS;
-	const double xwd, xed, xede, ywd, yed, Fcd, alpha;
+	const double xwd, xed, xede, ywd, yed, Fcd, alpha, dx;
+	FastBessel::Bess bess;
 	double iF1(const double u, const double x1, const double x2, const double yd) const; //+
 	double iF2E(const double u, const double x1, const double x2, const double xd, const double yd) const; //+
 	double iF2Ek(const int k, const double u, const double x1, const double x2, const double xd, const double yd) const; //+
@@ -46,11 +50,18 @@ private:
 	double i1F2Hk(const int k, const double u, const double x1, const double x2, const double xd, const double yd, const double beta) const; //+
 	double i2F2H(const double u, const double x1, const double x2,  const double yd) const;
 	double SEXP(const double y, const double e) const;
-	FastBessel::Bess bess;
 	Eigen::MatrixXd source_matrix;
 	Eigen::VectorXd rhs;
 	Eigen::MatrixXd _src_matrix;
 	void MakeMatrix(const double u, const double yd);
 	void MakeRhs(const double u);
 	Eigen::MatrixXd MakeSrcMatrix() const;
+	Eigen::MatrixXd if1_matrix, if2e_matrix, i1f2h_matrix, i2f2h_matrix;
+	Eigen::VectorXd i1f2h_buf;
+	void fill_if1(const double u);
+	void fill_if2e(const double u);
+	void fill_i1f2h(const double u);
+	void fill_f2f2h(const double u);
+	void vect_i1f2h(const double u, const int i, const int k, const double beta);
+
 };

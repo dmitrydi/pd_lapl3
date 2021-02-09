@@ -141,4 +141,37 @@ void TestCinco() {
 	}
 }
 
+void TestNew_i1f2h() {
+	double xed = 10.;
+	double xwd = 3.;
+	double yed = 3;
+	double ywd = yed/2.;
+	double Fcd = 3.14;
+	double u = 1.2;
+	LaplWell lwell(xwd, xed, ywd, yed, Fcd);
+	Eigen::MatrixXd old_ans(2*NSEG, 2*NSEG), new_ans(2*NSEG, 2*NSEG);
+	int N = 100;
+	{
+		LOG_DURATION("old");
+		for (int i = 0; i<N; ++i)
+			old_ans = lwell.make_i1f2h( u);
+	}
+	{
+		LOG_DURATION("new");
+		for (int i = 0; i<N; ++i)
+			new_ans = lwell.show_i1f2h_matrix(u);
+	}
+	cout << old_ans << endl;
+	cout << "----------------\n";
+	cout << new_ans << endl;
+	Eigen::MatrixXd delta = old_ans-new_ans;
+	cout << "----------------\n";
+	double max_delta = 0;
+	for (int i = 0; i < 2*NSEG; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			if (abs(delta(i,j))>max_delta) max_delta = abs(delta(i,j));
+		}
+	}
+	cout << max_delta;
+}
 
