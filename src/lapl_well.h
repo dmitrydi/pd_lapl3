@@ -49,6 +49,7 @@ private:
 	FastBessel::Bess bess;
 	Eigen::MatrixXd source_matrix;
 	Eigen::VectorXd rhs;
+	Eigen::MatrixXd _src_matrix;
 	void MakeMatrix(const double u, const double yd);
 	void MakeRhs(const double u);
 	Eigen::MatrixXd MakeSrcMatrix() const;

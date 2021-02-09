@@ -12,7 +12,9 @@ using namespace FastBessel;
 
 LaplWell::LaplWell(const double xwd_, const double xed_, const double ywd_, const double yed_, const double Fcd_, const double alpha_):
 		xwd(xwd_), xed(xed_), xede(xed_), ywd(ywd_), yed(yed_), Fcd(Fcd_), alpha(alpha_), source_matrix(2*NSEG+1, 2*NSEG+1),
-		rhs(2*NSEG+1) {};
+		rhs(2*NSEG+1), _src_matrix(2*NSEG, 2*NSEG) {
+	_src_matrix = MakeSrcMatrix();
+};
 
 double LaplWell::pwd(const double u) {
 	MakeMatrix(u, ywd);
@@ -177,10 +179,10 @@ void LaplWell::MakeMatrix(const double u, const double yd) {
 		source_matrix(i,0) = 1.;
 		source_matrix(2*nseg, i+1) = 1.;
 	}
-	auto src_m = MakeSrcMatrix();
+	//auto src_m = MakeSrcMatrix();
 	for (int i = 0; i< 2*NSEG; ++i) {
 		for (int j = 0; j < 2*NSEG; ++j) {
-			source_matrix(i, j+1) = src_m(i,j);
+			source_matrix(i, j+1) = _src_matrix(i,j);
 		}
 	}
 	// double iF1(const double u, const double x1, const double x2, const double yd) const
