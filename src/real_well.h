@@ -20,6 +20,7 @@ public:
 	RealWell(const double xwd, const double xed, const double ywd, const double yed, const double Fcd, const double alpha = 0.);
 	void PrintSourceMatrix() const;
 	double pwd(const double td);
+	double pwd_(const double td);
 private:
 	std::vector<double> stehf_coefs;
 	LaplWell lwell;

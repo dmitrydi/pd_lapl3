@@ -100,6 +100,7 @@ public:
 	long double ik0ab_pwr(const double x1, const double x2) const; // t: [a,b], power approximation for a,b < d;
 	double ik0ab_num(const double x1, const double x2) const; // numerical solution using gauss quadrature
 	double ik0ab(const double x1, const double x2) const; // adaptive function uses _ch, _pwr and _num functions;
+	double abs_ik0ab(const double x1, const double x2) const;
 	//-----------
 	double _k0(const double x) const; // sqrt(x)*exp(x)*BesselK[0,x], x >= d;
 	double k0(const double x) const; // BesselK[0,x], x >= d

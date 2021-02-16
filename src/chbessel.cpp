@@ -18,6 +18,16 @@ Bess::Bess(const bool fast, const int n, const int m, const double dd): is_fast(
 	gauleg(-1., 1., xgs, wgs);
 };
 
+double Bess::abs_ik0ab(const double x1, const double x2) const {
+	if (x1 >= 0) {
+		return ik0ab(x1, x2);
+	} else if (x2 <=0.) {
+		return ik0ab(abs(x2), abs(x1));
+	} else {
+		return ik00x(abs(x1))+ik00x(abs(x2));
+	}
+}
+
 double Bess::ik00x_ch(const double x) const {
 	if (x < d) throw invalid_argument("in Bess::ik00x_ch(x): x < d\n");
 	double sum = 0.;

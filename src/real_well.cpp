@@ -66,6 +66,18 @@ double RealWell::pwd(const double td) {
 	return ans;
 };
 
+double RealWell::pwd_(const double td) {
+	double s_mult = std::log(2.)/td;
+	double ans = 0.;
+	for (int i = 1; i <=NCOEF; ++i) {
+		double s = i*s_mult;
+		{
+		ans += lwell.pwd_(s)*s*stehf_coefs[i]/i;
+		}
+	}
+	return ans;
+};
+
 void RealWell::PrintSourceMatrix() const {
 	lwell.PrintSourceMatrix();
 }

@@ -18,16 +18,13 @@
 using namespace std;
 
 int main() {
-	//SimpleTest(); OK
+	//SimpleTest(); //OK
 	// TestGringarten();
 	// TestCinco(); OK
-	//LaplWell(const double xwd_, const double xed_, const double ywd_, const double yed_, const double Fcd_, const double alpha_ = 0.);
-	double xed = 10.;
-	double xwd = 3.;
-	double yed = 3;
-	double ywd = yed/2.;
-	double Fcd = 3.14;
-	double u = 1.2;
-	LaplWell lwell(xwd, xed, ywd, yed, Fcd);
-	cout << lwell.make_if2e(u);
+	// TestCincoNew(); OK
+	 TestNew_i1f2h(); //OK
+	// TestNew_if2e(); OK
+	// TestNew_if1(); OK
+	// TestNew_i2f2h(); OK
+	// TestNewSpeed();
 }

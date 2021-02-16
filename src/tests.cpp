@@ -24,7 +24,7 @@ void SimpleTest() {
 	vector<double> tds = LogSpaced(0.0001, 1000., 60);
 	LOG_DURATION("total");
 	for (auto td: tds) {
-		cout << td << "," << well.pwd(td) << endl;
+		cout << td << "," << well.pwd_(td) << endl;
 	}
 }
 
@@ -141,9 +141,104 @@ void TestCinco() {
 	}
 }
 
+void TestCincoNew() {
+	const double PI = 3.141592653589793;
+	const string datafile = "./test_data/cinco_infinite_reservoir.csv";
+	const vector<double> Fcds = {PI*0.2, PI, 2.*PI, 10.*PI, 20.*PI, 100.*PI};
+	ifstream dfile(datafile);
+	vector<double> tds;
+	vector<vector<double>> pwd_expected(Fcds.size());
+	vector<vector<double>> calculated(Fcds.size());
+	if (dfile) {
+		string line;
+		while (getline(dfile, line)) {
+			if (line[0] == '/') continue;
+			istringstream is(line);
+			string s;
+			getline(is, s, ';');
+			tds.push_back(stod(s));
+			for (size_t i = 0; i < Fcds.size(); ++i) {
+				getline(is, s, ';');
+				pwd_expected[i].push_back(stod(s));
+			}
+		}
+	}
+	const double xed = 100.;
+	const double yed = 100.;
+	const double xwd = xed*0.5;
+	const double ywd = yed*0.5;
+	for (size_t i = 0; i < Fcds.size(); ++i) {
+		double Fcd = Fcds[i];
+		RealWell well(xwd, xed, ywd, yed, Fcd);
+		for (size_t j = 0; j < tds.size(); ++j) {
+			double td  = tds[j];
+			double pwd = well.pwd_(td);
+			double pwd_e = pwd_expected[i][j];
+			double eps = abs(pwd - pwd_e)/pwd_e;
+			cout << "Fcd: " << Fcd << " td: " << td << " pwd: " << pwd << " expected: " << pwd_e << " eps: " << eps << endl;
+			calculated[i].push_back(pwd);
+		}
+	}
+
+	ofstream out("./test_data/cinco_test_out_new.csv");
+	for (size_t i = 0; i < tds.size(); ++i) {
+		out << tds[i] << ';';
+		for (size_t j = 0; j < Fcds.size(); ++j) {
+			out << calculated[j][i];
+			if (j < Fcds.size() - 1) out << ';';
+		}
+		out << '\n';
+	}
+}
+
+void TestNewSpeed() {
+	const double PI = 3.141592653589793;
+	const string datafile = "./test_data/cinco_infinite_reservoir.csv";
+	const vector<double> Fcds = {PI*0.2, PI, 2.*PI, 10.*PI, 20.*PI, 100.*PI};
+	ifstream dfile(datafile);
+	vector<double> tds;
+	vector<vector<double>> pwd_expected(Fcds.size());
+	vector<vector<double>> calculated(Fcds.size());
+	if (dfile) {
+		string line;
+		while (getline(dfile, line)) {
+			if (line[0] == '/') continue;
+			istringstream is(line);
+			string s;
+			getline(is, s, ';');
+			tds.push_back(stod(s));
+			for (size_t i = 0; i < Fcds.size(); ++i) {
+				getline(is, s, ';');
+				pwd_expected[i].push_back(stod(s));
+			}
+		}
+	}
+	const double xed = 100.;
+	const double yed = 100.;
+	const double xwd = xed*0.5;
+	const double ywd = yed*0.5;
+
+	{LOG_DURATION("New solution for " + to_string( Fcds.size()*tds.size()) + " points");
+	for (size_t i = 0; i < Fcds.size(); ++i) {
+		double Fcd = Fcds[i];
+		RealWell well(xwd, xed, ywd, yed, Fcd);
+		for (size_t j = 0; j < tds.size(); ++j) {
+			double td  = tds[j];
+			double pwd = well.pwd_(td);
+			double pwd_e = pwd_expected[i][j];
+			double eps = abs(pwd - pwd_e)/pwd_e;
+			//cout << "Fcd: " << Fcd << " td: " << td << " pwd: " << pwd << " expected: " << pwd_e << " eps: " << eps << endl;
+			calculated[i].push_back(pwd);
+		}
+	}
+	}
+	cout << calculated[0][0] << endl;
+}
+
+
 void TestNew_i1f2h() {
 	double xed = 10.;
-	double xwd = 3.;
+	double xwd = 1.1;
 	double yed = 3;
 	double ywd = yed/2.;
 	double Fcd = 3.14;
@@ -175,3 +270,115 @@ void TestNew_i1f2h() {
 	cout << max_delta;
 }
 
+void TestNew_if2e() {
+	double xed = 10.;
+	double xwd = 3.;
+	double yed = 3;
+	double ywd = yed/2.;
+	double Fcd = 3.14;
+	double u = 1.2;
+	LaplWell lwell(xwd, xed, ywd, yed, Fcd);
+	Eigen::MatrixXd old_ans(2*NSEG, 2*NSEG), new_ans(2*NSEG, 2*NSEG);
+	int N = 100;
+	{
+		LOG_DURATION("old");
+		for (int i = 0; i<N; ++i)
+			old_ans = lwell.make_if2e( u);
+	}
+	{
+		LOG_DURATION("new");
+		for (int i = 0; i<N; ++i)
+			new_ans = lwell.show_if2e_matrix(u);
+	}
+	cout << old_ans << endl;
+	cout << "----------------\n";
+	cout << new_ans << endl;
+	Eigen::MatrixXd delta = old_ans-new_ans;
+	cout << "----------------\n";
+	double max_delta = 0;
+	int max_i = -1, max_j =-1;
+	for (int i = 0; i < 2*NSEG; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			if (abs(delta(i,j))>max_delta) max_delta = abs(delta(i,j));
+			max_i = i;
+			max_j = j;
+		}
+	}
+	cout << max_delta << endl;
+	cout << max_i << " " << max_j << endl;
+	cout << old_ans(39,39) - new_ans(39,39) << endl;
+}
+
+void TestNew_if1() {
+	double xed = 10.;
+	double xwd = 3.;
+	double yed = 3;
+	double ywd = yed/2.;
+	double Fcd = 3.14;
+	double u = 1.2;
+	LaplWell lwell(xwd, xed, ywd, yed, Fcd);
+	Eigen::MatrixXd old_ans(2*NSEG, 2*NSEG), new_ans(2*NSEG, 2*NSEG);
+	int N = 100;
+	{
+		LOG_DURATION("old");
+		for (int i = 0; i<N; ++i)
+			old_ans = lwell.make_if1( u);
+	}
+	{
+		LOG_DURATION("new");
+		for (int i = 0; i<N; ++i)
+			new_ans = lwell.show_if1_matrix(u);
+	}
+	cout << old_ans << endl;
+	cout << "----------------\n";
+	cout << new_ans << endl;
+	Eigen::MatrixXd delta = old_ans-new_ans;
+	cout << "----------------\n";
+	double max_delta = 0;
+	int max_i = -1, max_j =-1;
+	for (int i = 0; i < 2*NSEG; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			if (abs(delta(i,j))>max_delta) max_delta = abs(delta(i,j));
+			max_i = i;
+			max_j = j;
+		}
+	}
+	cout << max_delta << endl;
+}
+
+void TestNew_i2f2h() {
+	double xed = 10.;
+	double xwd = 3.;
+	double yed = 3;
+	double ywd = yed/2.;
+	double Fcd = 3.14;
+	double u = 1.2;
+	LaplWell lwell(xwd, xed, ywd, yed, Fcd);
+	Eigen::MatrixXd old_ans(2*NSEG, 2*NSEG), new_ans(2*NSEG, 2*NSEG);
+	int N = 100;
+	{
+		LOG_DURATION("old");
+		for (int i = 0; i<N; ++i)
+			old_ans = lwell.make_i2f2h( u);
+	}
+	{
+		LOG_DURATION("new");
+		for (int i = 0; i<N; ++i)
+			new_ans = lwell.show_i2f2h_matrix(u);
+	}
+	cout << old_ans << endl;
+	cout << "----------------\n";
+	cout << new_ans << endl;
+	Eigen::MatrixXd delta = old_ans-new_ans;
+	cout << "----------------\n";
+	double max_delta = 0;
+	int max_i = -1, max_j =-1;
+	for (int i = 0; i < 2*NSEG; ++i) {
+		for (int j = 0; j < 2*NSEG; ++j) {
+			if (abs(delta(i,j))>max_delta) max_delta = abs(delta(i,j));
+			max_i = i;
+			max_j = j;
+		}
+	}
+	cout << max_delta << endl;
+}

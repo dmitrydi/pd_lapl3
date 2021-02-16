@@ -47,4 +47,14 @@ void TestGringarten();
 
 void TestCinco();
 
-void TestNew_i12fh();
+void TestCincoNew();
+
+void TestNewSpeed();
+
+void TestNew_i1f2h();
+
+void TestNew_if2e();
+
+void TestNew_if1();
+
+void TestNew_i2f2h();
