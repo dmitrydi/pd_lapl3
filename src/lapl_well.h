@@ -66,12 +66,18 @@ private:
 	Eigen::MatrixXd if1_matrix, if2e_matrix, i1f2h_matrix, i2f2h_matrix;
 	Eigen::VectorXd i1f2h_buf, if2e_buf;
 	void fill_if1(const double u);
+	void vect_if1_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf); // TODO
+
 	void fill_if2e(const double u); // OK
-	void fill_i1f2h(const double u); // OK
-	void fill_i1f2h_(const double u); // OK
-	void fill_i2f2h(const double u);
-	void vect_i1f2h(const double u, const int i, const int k, const double beta); // OK
-	void vect_i1f2h_(const double u, const double xd, Eigen::VectorXd& buf);
+	void vect_if2e_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf);
+
+	void fill_i1f2h(const double u);
+	void vect_i1f2h(const double u, const double xd, Eigen::VectorXd& buf);
 	void vect_i1f2h_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf);
+
+	void fill_i2f2h(const double u);
+	void vect_i2f2h_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf); //TODO
+
+
 
 };

@@ -328,67 +328,44 @@ void LaplWell::fill_if2e(const double u) {
 	}
 }
 
-void LaplWell::fill_i1f2h_(const double u) {
-	i1f2h_matrix = Eigen::MatrixXd::Zero(2*NSEG, 2*NSEG);
-	const double squ = sqrt(u+alpha*alpha);
-	int kmin = static_cast<int>(abs(0.5*(2./squ/xede-(-1.+(2*NSEG-1)*dx)/xed+(xwd-1+0.5*dx)/xed+xwd/xed)));
-	double d, dmult;
-	dmult = 8.*dx*exp(squ*xede/xed*abs((xwd-1+0.5*dx) + xwd - (-1.+(2*NSEG-1)*dx)))/1.-exp(-squ*2.*xede);
-	for (int k = 0; k <= KMAX; ++k) {
-		for (int i: {0, 2*NSEG-1}) {
-			for (double beta: {-1., 1.}) {
-				vect_i1f2h(u, i, k, beta);
-				for (int j = 0; j < 2*NSEG; ++j) {
-					i1f2h_matrix(i, j) += i1f2h_buf(j);
-				}
-				if (k>0) {
-					vect_i1f2h(u, i, -k, beta);
-					for (int j = 0; j < 2*NSEG; ++j) {
-						i1f2h_matrix(i, j) += i1f2h_buf(j);
-					}
-				}
-			}
-		}
-		d = dmult*exp(-squ*2*k*xede);
-		if (isnan(d)) d = 0.;
-		if (k>kmin && (d <= TINY || i1f2h_matrix(0,2*NSEG-1) <= TINY || abs(d/i1f2h_matrix(0,2*NSEG-1)) < eps)) break;
-	}
-	for (int i = 1; i < 2*NSEG - 1; ++i) {
-		for (int j = 0; j < 2*NSEG; ++j) {
-			if (j >= i) {
-				i1f2h_matrix(i,j) = i1f2h_matrix(0, j-i);
-			}
-			else {
-				i1f2h_matrix(i,j) = i1f2h_matrix(2*NSEG-1, 2*NSEG-1-i+j);
-			}
-		}
-	}
-}
 
-void LaplWell::vect_i1f2h(const double u, const int i, const int k, const double beta) {
-	const double squ = sqrt(u+alpha*alpha);
-	double mult = xed/xede/squ*0.5*xede/PI;
-	double t1, t2, x1, x2, elem;
-	for (int j = 0; j < 2*NSEG; ++j) {
-		x1 = -1.+j*dx;
-		x2 = x1 + dx;
-		t1 = squ*xede*((xwd-1.+(i+0.5)*dx)/xed+beta*xwd/xed-x2/xed-2.*k);
-		t2 = squ*xede*((xwd-1.+(i+0.5)*dx)/xed+beta*xwd/xed-x1/xed-2.*k);
-		if (t1 >= 0) {
-			elem = mult*bess.ik0ab(t1, t2);
-		} else if (t2 <=0.) {
-			elem = mult*bess.ik0ab(abs(t2), abs(t1));
-		} else {
-			elem = mult*(bess.ik00x(abs(t1))+bess.ik00x(abs(t2)));
+void LaplWell::vect_if2e_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf) {
+	buf = Eigen::VectorXd::Zero(2*NSEG);
+	static const double term1 = PI/xed*(2*yed-(yd+ywd));
+	static const double term2 = PI/xed*(2*yed-abs(yd-ywd));
+	static const double term3 = PI/xed*(yd+ywd);
+	static const double term4 = PI/xed*(2*yed+abs(yd-ywd));
+	static const double dterm1 = 1.-exp(-term1);
+	static const double dterm2 = 1.-exp(-term2);
+	static const double dterm3 = 1.-exp(-term3);
+	static const double dterm4 = 1.-exp(-term4);
+	double ek_term, ek_, sexp_, aydywd, kpiOxed,ydPywd, mmult, A, d, max_mat=0.;
+	for (int k = 1; k <= KMAX; ++k) {
+		ek_term = k*PI/xede;
+		ek_ = sqrt(u + ek_term*ek_term + alpha*alpha);
+		sexp_ = SEXP(yed, ek_);
+		aydywd = abs(yd-ywd); //!
+		kpiOxed = k*PI/xed;
+		ydPywd = yd + ywd; //!
+		mmult =  cos(kpiOxed*xd)*2./kpiOxed/ek_*((std::exp(-ek_*(2.*yed - ydPywd)) + std::exp(-ek_*ydPywd) + std::exp(-ek_*(2.*yed-aydywd)))*(1 + sexp_)
+				+ std::exp(-ek_*aydywd)*sexp_);
+		for (int j = 0; j < 2*NSEG; ++j) {
+			double x1 = -1.+j*dx;
+			double x2 = x1 + dx;
+			buf(j)  = mmult*sin(0.5*kpiOxed*(x2 - x1))*std::cos(0.5*kpiOxed*(2.*xwd + x1 + x2));
+			if (abs(buf(j)) > max_mat) max_mat = abs(buf(j));
 		}
-		i1f2h_buf(j) = elem;
+		A = 2*xed/PI/(1-exp(-2*ek_*yed));
+		d = A*(exp(-k*term1)/dterm1+exp(-k*term2)/dterm2+exp(-k*term3)/dterm3 + exp(-k*term4)/dterm4);
+		if (isnan(d)) d = 0.;
+		if (k > KMIN && (abs(d) <= TINY || abs(max_mat) <= TINY || abs(d/max_mat) < eps)) break;
 	}
 }
 
 void LaplWell::fill_i1f2h(const double u) {
 	for (int i: {0, 2*NSEG-1}) {
 		double xd = xwd-1.+(i+0.5)*dx;
-		vect_i1f2h_(u, xd, i1f2h_buf);
+		vect_i1f2h(u, xd, i1f2h_buf);
 		for (int j = 0; j < 2*NSEG; ++j)
 			i1f2h_matrix(i,j) = i1f2h_buf(j);
 	}
@@ -404,7 +381,7 @@ void LaplWell::fill_i1f2h(const double u) {
 	}
 }
 
-void LaplWell::vect_i1f2h_(const double u, const double xd, Eigen::VectorXd& buf) {
+void LaplWell::vect_i1f2h(const double u, const double xd, Eigen::VectorXd& buf) {
 	buf = Eigen::VectorXd::Zero(2*NSEG);
 	const double squ = sqrt(u+alpha*alpha);
 	static const int kmin = static_cast<int>(abs(0.5*(2./squ/xede-(-1.+(2*NSEG-1)*dx)/xed+(xwd-1+0.5*dx)/xed+xwd/xed)));
@@ -437,7 +414,7 @@ void LaplWell::vect_i1f2h_yd(const double u, const double xd, const double yd, E
 	double adyd = abs(ywd-yd);
 	if (adyd < 1e-16)
 	{
-		vect_i1f2h_(u, xd, buf);
+		vect_i1f2h(u, xd, buf);
 	} else {
 		buf = Eigen::VectorXd::Zero(2*NSEG);
 		const double squ = sqrt(u+alpha*alpha);
