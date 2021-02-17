@@ -66,6 +66,42 @@ double RealWell::pwd(const double td) {
 	return ans;
 };
 
+double RealWell::qwd(const double td) {
+	double s_mult = std::log(2.)/td;
+	double ans = 0.;
+	for (int i = 1; i <=NCOEF; ++i) {
+		double s = i*s_mult;
+		{
+		ans += lwell.qwd(s)*s*stehf_coefs[i]/i;
+		}
+	}
+	return ans;
+}
+double RealWell::pd(const double td, const double xd, const double yd) {
+	double s_mult = std::log(2.)/td;
+	double ans = 0.;
+	for (int i = 1; i <=NCOEF; ++i) {
+		double s = i*s_mult;
+		{
+		ans += lwell.pd(s, xd, yd)*s*stehf_coefs[i]/i;
+		}
+	}
+	return ans;
+}
+
+Eigen::MatrixXd RealWell::pd(const double td, const Eigen::VectorXd& xd, const Eigen::VectorXd& yd) {
+	double s_mult = std::log(2.)/td;
+	Eigen::MatrixXd ans;
+	ans = Eigen::MatrixXd::Zero(xd.size(), yd.size());
+	for (int i = 1; i <=NCOEF; ++i) {
+		double s = i*s_mult;
+		{
+		ans += lwell.pd(s, xd, yd)*s*stehf_coefs[i]/i;
+		}
+	}
+	return ans;
+}
+
 double RealWell::pwd_(const double td) {
 	double s_mult = std::log(2.)/td;
 	double ans = 0.;

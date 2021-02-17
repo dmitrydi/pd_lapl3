@@ -31,6 +31,7 @@ public:
 	LaplWell(const double xwd_, const double xed_, const double ywd_, const double yed_, const double Fcd_, const double alpha_ = 0.);
 	void PrintSourceMatrix() const;
 	double pd(const double u, const double xd, const double yd);
+	Eigen::MatrixXd pd(const double u, const Eigen::VectorXd& xd, const Eigen::VectorXd& yd);
 	double pwd(const double u);
 	double pwd_(const double u);
 	double qwd(const double u);
@@ -42,6 +43,8 @@ public:
 	Eigen::MatrixXd show_i2f2h_matrix(const double u); //fast OK
 	Eigen::MatrixXd show_if2e_matrix(const double u); //fast OK
 	Eigen::MatrixXd show_if1_matrix(const double u);
+	Eigen::MatrixXd show_matrix(const double u);
+	Eigen::VectorXd show_green_vector(const double u, const double xd, const double yd);
 
 private:
 	const double PI = 3.141592653589793;
@@ -66,7 +69,7 @@ private:
 	Eigen::MatrixXd if1_matrix, if2e_matrix, i1f2h_matrix, i2f2h_matrix;
 	Eigen::VectorXd i1f2h_buf, if2e_buf;
 	void fill_if1(const double u);
-	void vect_if1_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf); // TODO
+	void vect_if1_yd(const double u, const double yd, Eigen::VectorXd& buf);
 
 	void fill_if2e(const double u); // OK
 	void vect_if2e_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf);
@@ -76,8 +79,8 @@ private:
 	void vect_i1f2h_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf);
 
 	void fill_i2f2h(const double u);
-	void vect_i2f2h_yd(const double u, const double xd, const double yd, Eigen::VectorXd& buf); //TODO
+	void vect_i2f2h_yd(const double u, const double yd, Eigen::VectorXd& buf); //TODO
 
-
+	Eigen::VectorXd MakeGreenVector(const double u, const double xd, const double yd);
 
 };

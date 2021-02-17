@@ -19,16 +19,52 @@ LaplWell::LaplWell(const double xwd_, const double xed_, const double ywd_, cons
 	_src_matrix = MakeSrcMatrix();
 };
 
-double LaplWell::pwd(const double u) {
+double LaplWell::pwd_(const double u) {
 	MakeMatrix(u, ywd);
 	MakeRhs(u);
 	return source_matrix.colPivHouseholderQr().solve(rhs)(0);
 }
 
-double LaplWell::pwd_(const double u) {
+double LaplWell::qwd(const double u) {
+	return pwd(u)/u;
+}
+
+double LaplWell::pwd(const double u) {
 	NewMakeMatrix(u);
 	MakeRhs(u);
 	return source_matrix.colPivHouseholderQr().solve(rhs)(0);
+}
+
+double LaplWell::pd(const double u, const double xd, const double yd) {
+	NewMakeMatrix(u);
+	MakeRhs(u);
+	auto svect = source_matrix.colPivHouseholderQr().solve(rhs);
+	auto green = MakeGreenVector(u, xd, yd);
+	double ans = 0.;
+	for (int i = 0; i < 2*NSEG; ++i) {
+		ans += svect(i+1)*green(i);
+	}
+	return ans;
+}
+
+Eigen::MatrixXd LaplWell::pd(const double u, const Eigen::VectorXd& xd, const Eigen::VectorXd& yd) {
+	size_t nxd, nyd;
+	nxd = xd.size();
+	nyd = yd.size();
+	Eigen::MatrixXd ans;
+	ans = Eigen::MatrixXd::Zero(nxd, nyd);
+	NewMakeMatrix(u);
+	MakeRhs(u);
+	Eigen::VectorXd svect = source_matrix.colPivHouseholderQr().solve(rhs);
+	for (int i = 0; i < nxd; ++i) {
+		for (int j = 0; j< nyd; ++j) {
+			auto green = MakeGreenVector(u, xd(i), yd(j));
+			for (int k = 0; k < 2*NSEG; ++k) {
+				ans(i, j) += svect(k+1)*green(k);
+			}
+		}
+	}
+	return ans;
 }
 
 double LaplWell::iF1(const double u, const double x1, const double x2, const double yd) const {
@@ -273,9 +309,32 @@ void LaplWell::NewMakeMatrix(const double u) {
 	}
 }
 
+Eigen::VectorXd LaplWell::MakeGreenVector(const double u, const double xd, const double yd) {
+	Eigen::VectorXd ans(2*NSEG), buf(2*NSEG);
+	double mult = PI/xed;
+	vect_if1_yd(u, yd, buf);
+	ans = mult*buf;
+	vect_if2e_yd(u, xd, yd, buf);
+	ans += mult*buf;
+	vect_i1f2h(u, xd, buf);
+	ans += mult*buf;
+	vect_i2f2h_yd(u, yd, buf);
+	ans += mult*buf;
+	return ans;
+}
+
+Eigen::MatrixXd LaplWell::show_matrix(const double u) {
+	return show_if1_matrix(u)+show_i1f2h_matrix(u)+show_i2f2h_matrix(u)+show_if2e_matrix(u);
+}
+
 void LaplWell::fill_i2f2h(const double u) {
 	double squ = sqrt(u+alpha*alpha);
 	i2f2h_matrix = -0.5*exp(-squ*abs(ywd-ywd))/squ*(dx)*Eigen::MatrixXd::Ones(2*NSEG, 2*NSEG);
+}
+
+void LaplWell::vect_i2f2h_yd(const double u, const double yd, Eigen::VectorXd& buf) {
+	double squ = sqrt(u+alpha*alpha);
+	buf = -0.5*exp(-squ*abs(yd-ywd))/squ*(dx)*Eigen::VectorXd::Ones(2*NSEG);
 }
 
 void LaplWell::fill_if1(const double u) {
@@ -286,6 +345,16 @@ void LaplWell::fill_if1(const double u) {
 	ans *= exp(-squ*(2.*yed-sumy))+exp(-squ*sumy)+exp(-squ*(2.*yed-dy))+exp(-squ*dy);
 	ans *= (1+SEXP(yed, squ));
 	if1_matrix = Eigen::MatrixXd::Ones(2*NSEG, 2*NSEG)*ans;
+}
+
+void LaplWell::vect_if1_yd(const double u, const double yd, Eigen::VectorXd& buf) {
+	double squ = sqrt(u+alpha*alpha);
+	double ans = 0.5*dx/squ;
+	double dy = std::abs(yd-ywd);
+	double sumy = yd+ywd;
+	ans *= exp(-squ*(2.*yed-sumy))+exp(-squ*sumy)+exp(-squ*(2.*yed-dy))+exp(-squ*dy);
+	ans *= (1+SEXP(yed, squ));
+	buf = Eigen::VectorXd::Ones(2*NSEG)*ans;
 }
 
 void LaplWell::fill_if2e(const double u) {
@@ -339,7 +408,7 @@ void LaplWell::vect_if2e_yd(const double u, const double xd, const double yd, Ei
 	static const double dterm2 = 1.-exp(-term2);
 	static const double dterm3 = 1.-exp(-term3);
 	static const double dterm4 = 1.-exp(-term4);
-	double ek_term, ek_, sexp_, aydywd, kpiOxed,ydPywd, mmult, A, d, max_mat=0.;
+	double ek_term, ek_, sexp_, aydywd, kpiOxed,ydPywd, mmult, A, d, max_mat=0., row_mult;
 	for (int k = 1; k <= KMAX; ++k) {
 		ek_term = k*PI/xede;
 		ek_ = sqrt(u + ek_term*ek_term + alpha*alpha);
@@ -347,12 +416,13 @@ void LaplWell::vect_if2e_yd(const double u, const double xd, const double yd, Ei
 		aydywd = abs(yd-ywd); //!
 		kpiOxed = k*PI/xed;
 		ydPywd = yd + ywd; //!
-		mmult =  cos(kpiOxed*xd)*2./kpiOxed/ek_*((std::exp(-ek_*(2.*yed - ydPywd)) + std::exp(-ek_*ydPywd) + std::exp(-ek_*(2.*yed-aydywd)))*(1 + sexp_)
+		mmult =  2./kpiOxed/ek_*((std::exp(-ek_*(2.*yed - ydPywd)) + std::exp(-ek_*ydPywd) + std::exp(-ek_*(2.*yed-aydywd)))*(1 + sexp_)
 				+ std::exp(-ek_*aydywd)*sexp_);
+		row_mult = cos(kpiOxed*xd);
 		for (int j = 0; j < 2*NSEG; ++j) {
 			double x1 = -1.+j*dx;
 			double x2 = x1 + dx;
-			buf(j)  = mmult*sin(0.5*kpiOxed*(x2 - x1))*std::cos(0.5*kpiOxed*(2.*xwd + x1 + x2));
+			buf(j)  += row_mult*mmult*sin(0.5*kpiOxed*(x2 - x1))*std::cos(0.5*kpiOxed*(2.*xwd + x1 + x2));
 			if (abs(buf(j)) > max_mat) max_mat = abs(buf(j));
 		}
 		A = 2*xed/PI/(1-exp(-2*ek_*yed));
@@ -443,6 +513,10 @@ void LaplWell::vect_i1f2h_yd(const double u, const double xd, const double yd, E
 }
 
 // ---- new show
+Eigen::VectorXd LaplWell::show_green_vector(const double u, const double xd, const double yd) {
+	return MakeGreenVector(u, xd, yd);
+}
+
 Eigen::MatrixXd LaplWell::show_if1_matrix(const double u) {//fast
 	fill_if1(u);
 	Eigen::MatrixXd ans(2*NSEG, 2*NSEG);
@@ -477,6 +551,8 @@ Eigen::MatrixXd LaplWell::show_if2e_matrix(const double u) {//fast
 	double mult = -1.*PI/xed;
 	return if2e_matrix*mult;
 }
+
+
 
 // --- old show
 

@@ -122,7 +122,7 @@ void TestCinco() {
 		RealWell well(xwd, xed, ywd, yed, Fcd);
 		for (size_t j = 0; j < tds.size(); ++j) {
 			double td  = tds[j];
-			double pwd = well.pwd(td);
+			double pwd = well.pwd_(td);
 			double pwd_e = pwd_expected[i][j];
 			double eps = abs(pwd - pwd_e)/pwd_e;
 			cout << "Fcd: " << Fcd << " td: " << td << " pwd: " << pwd << " expected: " << pwd_e << " eps: " << eps << endl;
@@ -172,7 +172,7 @@ void TestCincoNew() {
 		RealWell well(xwd, xed, ywd, yed, Fcd);
 		for (size_t j = 0; j < tds.size(); ++j) {
 			double td  = tds[j];
-			double pwd = well.pwd_(td);
+			double pwd = well.pwd(td);
 			double pwd_e = pwd_expected[i][j];
 			double eps = abs(pwd - pwd_e)/pwd_e;
 			cout << "Fcd: " << Fcd << " td: " << td << " pwd: " << pwd << " expected: " << pwd_e << " eps: " << eps << endl;
@@ -381,4 +381,91 @@ void TestNew_i2f2h() {
 		}
 	}
 	cout << max_delta << endl;
+}
+
+void TestGreen() {
+	double xed = 10.;
+	double xwd = 3.;
+	double yed = 3;
+	double ywd = yed/2.;
+	double Fcd = 3.14;
+	double u = 1.2;
+	double xd = xwd-1.+0.5*1./NSEG;
+	double yd = ywd;
+	LaplWell lwell(xwd, xed, ywd, yed, Fcd);
+	Eigen::MatrixXd mat(2*NSEG, 2*NSEG);
+	Eigen::VectorXd vect(2*NSEG);
+	mat = lwell.show_matrix(u);
+	vect = lwell.show_green_vector(u, xd, yd);
+	for (int i = 0; i < 2*NSEG; ++i) {
+		cout << mat(0, i) + vect(i) << endl;
+	}
+}
+
+
+void GridPdLapl() {
+	double xed = 10.;
+	double xwd = 3.;
+	double yed = 3;
+	double ywd = yed/2.;
+	double Fcd = 3.14;
+	double u = 1.2;
+	double x1 = xwd-1.;
+	double x2 = xwd+1.;
+	int n_out = 20;
+	int n_in = 40;
+	double dx1 = x1/n_out;
+	double dx2 = (xed-x2)/(n_out);
+	double dx_in = 2./n_in;
+	Eigen::VectorXd xds(2*n_out + n_in +1);
+	for (int i = 0; i < n_out; ++i) {
+		xds(i) = i*dx1;
+	}
+	for (int i = 0; i < n_in; ++i) {
+		xds(n_out+i) =  x1 + i*dx_in;
+	}
+	for (int i = 0; i <= n_out; ++i) {
+		xds(n_in+n_out+i) = x2 + i*dx2;
+	}
+	Eigen::VectorXd yds(1);
+	yds(0) = ywd;
+	LaplWell lwell(xwd, xed, ywd, yed, Fcd);
+	auto m = lwell.pd( u, xds, yds);
+	for (int i = 0; i < xds.size(); ++i) {
+		cout << xds(i) << " " << m(i,0) << endl;
+	}
+}
+
+void GridPd() {
+	double xed = 10.;
+	double xwd = 3.;
+	double yed = 3;
+	double ywd = yed/2.;
+	double Fcd = 314;
+	double u = 1.2;
+	double x1 = xwd-1.;
+	double x2 = xwd+1.;
+	int n_out = 20;
+	int n_in = 40;
+	double dx1 = x1/n_out;
+	double dx2 = (xed-x2)/(n_out);
+	double dx_in = 2./n_in;
+	Eigen::VectorXd xds(2*n_out + n_in +1);
+	for (int i = 0; i < n_out; ++i) {
+		xds(i) = i*dx1;
+	}
+	for (int i = 0; i < n_in; ++i) {
+		xds(n_out+i) =  x1 + i*dx_in;
+	}
+	for (int i = 0; i <= n_out; ++i) {
+		xds(n_in+n_out+i) = x2 + i*dx2;
+	}
+	Eigen::VectorXd yds(1);
+	yds(0) = ywd;
+	RealWell well(xwd, xed, ywd, yed, Fcd);
+	double td = 1.1;
+	auto m = well.pd(td, xds, yds);
+	for (int i = 0; i < xds.size(); ++i) {
+		cout << xds(i) << " " << m(i,0) << endl;
+	}
 }

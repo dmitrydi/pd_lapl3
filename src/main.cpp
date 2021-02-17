@@ -21,10 +21,15 @@ int main() {
 	//SimpleTest(); //OK
 	// TestGringarten();
 	// TestCinco(); OK
-	// TestCincoNew(); OK
-	 TestNew_i1f2h(); //OK
+	//TestCincoNew(); //OK
+	// TestNew_i1f2h(); //OK
 	// TestNew_if2e(); OK
 	// TestNew_if1(); OK
 	// TestNew_i2f2h(); OK
 	// TestNewSpeed();
+	//TestGreen();
+	//GridPdLapl();
+	GridPd();
+
+
 }
